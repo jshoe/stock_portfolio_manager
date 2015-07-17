@@ -31,14 +31,15 @@ def get_price(symbol, data):
 
 def make_table_default():
     """Make a new table with the default formatting."""
-    table = PrettyTable(["Name", "Symbol", "Your Lo", colored("-Gap (%)", 'red'), colored("Cur ($)", 'cyan'), colored("+Gap (%)", 'green'), "Your Hi", "Alert", "LBP", "Flag", "Shares", "Notes"])
+    table = PrettyTable(["Name", "Sym", "Ur Lo", colored("-Gap %", 'red'), colored("Cur $", 'cyan'), colored("+Gap %", 'green'), "Ur Hi", "Alrt", "LBP", "Flg", "Qt", "LTD", "Notes"])
     table.align = "r"
     table.align["Name"] = "l"
-    table.align["Symbol"] = "l"
+    table.align["Sym"] = "l"
     table.align["Notes"] = "l"
-    table.align["Shares"] = "c"
-    table.align["Flag"] = "c"
+    table.align["Qt"] = "c"
+    table.align["Flg"] = "c"
     table.align["LBP"] = "c"
+    table.align["LTD"] = "l"
     return table
 
 def fill_table_entry_full(s, data, table):
@@ -51,6 +52,7 @@ def fill_table_entry_full(s, data, table):
     shares = s['shares']
     notes = s['notes']
     lbp = s['lim_buy_price']
+    last_target_update = s['last_target_update']
     
     if flag == '':
         return # Flag toggle.
@@ -70,7 +72,7 @@ def fill_table_entry_full(s, data, table):
     if shares == '0':
         shares = ''
 
-    table.add_row([name, symbol, your_low, low_off, cur_price, hi_off, your_hi, alert, lbp, flag, shares, notes])
+    table.add_row([name, symbol, your_low, low_off, cur_price, hi_off, your_hi, alert, lbp, flag, shares, last_target_update, notes])
 
 def fill_table_entry_portfolio(s, data, table):
     """Populate table with data for current entry with owned shares."""
@@ -83,6 +85,7 @@ def fill_table_entry_portfolio(s, data, table):
     lbp = s['lim_buy_price']
     flag = s['flag']
     notes = s['notes']
+    last_target_update = s['last_target_update']
     cur_price = get_price(symbol, data)
 
     your_low = round(decimal.Decimal(s['low_price']), 2) # Represents a good buying price.
@@ -97,17 +100,17 @@ def fill_table_entry_portfolio(s, data, table):
     elif cur_price > your_hi and your_hi > 0:
         alert = "SELL!"
     
-    table.add_row([name, symbol, your_low, low_off, cur_price, hi_off, your_hi, alert, lbp, flag, shares, notes])    
+    table.add_row([name, symbol, your_low, low_off, cur_price, hi_off, your_hi, alert, lbp, flag, shares, last_target_update, notes])    
 
 def print_charts(full, portfolio):
     """Format and display the data view to the user."""
     print("\nLBP = Limit Buy Price - Buy price for limit orders placed.")
     print("\nWATCH LIST:")
     #full.sortby = "Symbol"
-    full.sortby = colored("-Gap (%)", 'red')
+    full.sortby = colored("-Gap %", 'red')
     #full.sortby = "Name"
     print(full)
-    portfolio.sortby = colored("-Gap (%)", 'red')
+    portfolio.sortby = colored("-Gap %", 'red')
     print("\nCURRENT HOLDINGS:")
     print(portfolio)
 
