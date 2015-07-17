@@ -1,11 +1,12 @@
+from prettytable import PrettyTable
+from termcolor import colored, cprint
 import codecs
 import decimal
+import getopt
 import json
-from prettytable import PrettyTable
+import sys
 import time
 import urllib.request
-import sys
-from termcolor import colored, cprint
 
 # Yahoo YQL API stuff
 utf_decoder = codecs.getreader("utf-8")
@@ -33,35 +34,37 @@ def make_table_default():
     """Make a new table with the default formatting."""
     table = PrettyTable(["Name", "Sym", "Ur Lo", colored("-Gap %", 'red'), colored("Cur $", 'cyan'), colored("+Gap %", 'green'), "Ur Hi", "Alrt", "LBP", "Flg", "Qt", "LTD", "Notes"])
     table.align = "r"
-    table.align["Name"] = "l"
-    table.align["Sym"] = "l"
-    table.align["Notes"] = "l"
-    table.align["Qt"] = "c"
     table.align["Flg"] = "c"
     table.align["LBP"] = "c"
     table.align["LTD"] = "l"
+    table.align["Name"] = "l"
+    table.align["Notes"] = "l"
+    table.align["Qt"] = "c"
+    table.align["Sym"] = "l"
     return table
 
-def fill_table_entry_full(s, data, table):
+def fill_table_entry(s, data, table, mode):
     """Populate the table with financial data for the current entry."""
-    name = s['name']
+    alert = ""
     flag = s['flag']
+    last_target_update = s['last_target_update']
+    lbp = s['lim_buy_price']
+    name = s['name']
+    notes = s['notes']
+    shares = s['shares']
     symbol = s['symbol']
     cur_price = get_price(symbol, data)
-    alert = ""
-    shares = s['shares']
-    notes = s['notes']
-    lbp = s['lim_buy_price']
-    last_target_update = s['last_target_update']
-    
-    if flag == '':
-        return # Flag toggle.
     
     your_low = round(decimal.Decimal(s['low_price']), 2) # Represents a good buying price.
     low_off = round(100 * (cur_price - your_low) / cur_price, 2)
     your_hi = round(decimal.Decimal(s['high_price']), 2) # Represents a good selling price.
     hi_off = round(100 * (your_hi - cur_price) / cur_price, 2)
     
+    if mode == "full" and flag == '':
+        return # Flag toggle.
+    elif mode == "portfolio" and shares == "0":
+        return
+
     cur_price = round(cur_price, 2)
     
     if cur_price < your_low:
@@ -74,56 +77,53 @@ def fill_table_entry_full(s, data, table):
 
     table.add_row([name, symbol, your_low, low_off, cur_price, hi_off, your_hi, alert, lbp, flag, shares, last_target_update, notes])
 
-def fill_table_entry_portfolio(s, data, table):
-    """Populate table with data for current entry with owned shares."""
-    shares = s['shares']
-    if shares == '0':
-        return
-    name = s['name']
-    symbol = s['symbol'] 
-    alert = ""
-    lbp = s['lim_buy_price']
-    flag = s['flag']
-    notes = s['notes']
-    last_target_update = s['last_target_update']
-    cur_price = get_price(symbol, data)
-
-    your_low = round(decimal.Decimal(s['low_price']), 2) # Represents a good buying price.
-    low_off = round(100 * (cur_price - your_low) / cur_price, 2)
-    your_hi = round(decimal.Decimal(s['high_price']), 2) # Represents a good selling price.
-    hi_off = round(100 * (your_hi - cur_price) / cur_price, 2)
-    
-    cur_price = round(cur_price, 2)
-    
-    if cur_price < your_low:
-        alert = "BUY!"
-    elif cur_price > your_hi and your_hi > 0:
-        alert = "SELL!"
-    
-    table.add_row([name, symbol, your_low, low_off, cur_price, hi_off, your_hi, alert, lbp, flag, shares, last_target_update, notes])    
-
-def print_charts(full, portfolio):
+def print_charts(full, portfolio, sort_by):
     """Format and display the data view to the user."""
-    print("\nLBP = Limit Buy Price - Buy price for limit orders placed.")
+    print("")
+    print("LBP (Limit Buy Price) - Buy price for limit orders placed.")
+    print("LTD (Last Target Date) - Last time your price target was updated.")
+    print("Ur Hi (Your High) - A good selling price for you.")
+    print("Ur Lo (Your Low) - A good buying price for you.")
     print("\nWATCH LIST:")
-    #full.sortby = "Symbol"
-    full.sortby = colored("-Gap %", 'red')
-    #full.sortby = "Name"
+
+    if sort_by == '-Gap':
+        sort_by = colored("-Gap %", 'red')
+    elif sort_by == 'Cur':
+        sort_by = colored("Cur $", 'cyan')
+    elif sort_by == '+Gap':
+        sort_by = colored("+Gap %", 'green')
+
+    full.sortby = sort_by
+    portfolio.sortby = sort_by
+
     print(full)
-    portfolio.sortby = colored("-Gap %", 'red')
     print("\nCURRENT HOLDINGS:")
     print(portfolio)
 
+def parse_options(argv):
+    """Process any command line arguments."""
+    sort_by = ""
+    try:
+        opts, args = getopt.getopt(argv, "s:", ["sort_by="])
+    except getopt.GetoptError:
+        print("Argument error.")
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("-s", "--sort_by"):
+             sort_by = arg
+    return sort_by
+
 def main():
+    sort_by = parse_options(sys.argv[1:])
     stock_list = json.load(open('stock_list3.txt'))
     data = quote_fetch(stock_list)
     full = make_table_default()
     portfolio = make_table_default()
 
     for s in stock_list:
-        fill_table_entry_full(s, data, full)
-        fill_table_entry_portfolio(s, data, portfolio)
+        fill_table_entry(s, data, full, "full")
+        fill_table_entry(s, data, portfolio, "portfolio")
 
-    print_charts(full, portfolio)
+    print_charts(full, portfolio, sort_by)
 
 main()
