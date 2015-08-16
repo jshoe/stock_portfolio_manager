@@ -1,3 +1,4 @@
+from pprint import pprint
 from prettytable import PrettyTable
 from termcolor import colored, cprint
 import codecs
@@ -8,13 +9,12 @@ import sys
 import time
 import urllib.request
 
-# Yahoo YQL API stuff
-utf_decoder = codecs.getreader("utf-8")
-stocks_base_URL = 'https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.quote%20where%20symbol%20in%20('
-URL_end = ')&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback='
-
 def quote_fetch(stock_list):
     """Get info for all stocks in list from Yahoo YQL."""
+    utf_decoder = codecs.getreader("utf-8")
+    stocks_base_URL = 'https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.quote%20where%20symbol%20in%20('
+    URL_end = ')&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback='
+
     query = stocks_base_URL
     for stock in stock_list:
         query = query + "%22" + stock['symbol'] + "%22" + "%2C"
@@ -23,6 +23,24 @@ def quote_fetch(stock_list):
     api_response = urllib.request.urlopen(query)
     data = json.load(utf_decoder(api_response))['query']['results']['quote']
     return data
+
+def fetch_stock_history(stock):
+    """Loads historical data for a single stock from Yahoo YQL."""
+    utf_decoder = codecs.getreader("utf-8")
+    stocks_base_URL = 'https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20'
+    URL_end = '%20and%20startDate%20%3D%20%222014-07-16%22%20and%20endDate%20%3D%20%222015-07-16%22&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback='
+
+    query = stocks_base_URL + "%22" + stock + "%22" + "%2C"
+    query = query[:-3] + URL_end
+    api_response = urllib.request.urlopen(query)
+    historical_data = json.load(utf_decoder(api_response))['query']['results']['quote']
+    return historical_data
+
+def fetch_all_historical_data(stock_list):
+    """Loads historical data for all the stocks in list from Yahoo YQL."""
+    result = fetch_stock_history("YHOO")
+    with open('historical/YHOO.txt', 'w') as outfile:
+        json.dump(result, outfile, indent = 2)
 
 def get_price(symbol, data):
     """Extract current price from Yahoo data."""
@@ -68,9 +86,9 @@ def fill_table_entry(s, data, table, mode):
     cur_price = round(cur_price, 2)
     
     if cur_price < your_low:
-        alert = "BUY!"
+        alert = "BUY"
     elif cur_price > your_hi and your_hi > 0:
-        alert = "SELL!"
+        alert = "SELL"
 
     if shares == '0':
         shares = ''
@@ -86,7 +104,7 @@ def print_charts(full, portfolio, sort_by):
     print("Ur Lo (Your Low) - A good buying price for you.")
     print("\nWATCH LIST:")
 
-    if sort_by == '-Gap':
+    if sort_by == '-Gap' or sort_by == '':
         sort_by = colored("-Gap %", 'red')
     elif sort_by == 'Cur':
         sort_by = colored("Cur $", 'cyan')
@@ -114,6 +132,7 @@ def parse_options(argv):
     return sort_by
 
 def main():
+    """Show user their default chart view."""
     sort_by = parse_options(sys.argv[1:])
     stock_list = json.load(open('stock_list3.txt'))
     data = quote_fetch(stock_list)
@@ -124,6 +143,7 @@ def main():
         fill_table_entry(s, data, full, "full")
         fill_table_entry(s, data, portfolio, "portfolio")
 
+    #fetch_all_historical_data(json.load(open('stock_list3.txt')))
     print_charts(full, portfolio, sort_by)
 
 main()
