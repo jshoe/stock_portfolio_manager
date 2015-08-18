@@ -1,5 +1,8 @@
 # Stock Portfolio Manager / Watcher
-Playing around with Yahoo Finance YQL API to make a stock portfolio / watchlist interface.
+
+Date authored: June 25, 2015
+
+Playing around with the Yahoo Finance YQL API to make a stock portfolio / watchlist interface.
 
 Outdated demo screen:
 
