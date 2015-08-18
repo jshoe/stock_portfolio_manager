@@ -134,7 +134,7 @@ def parse_options(argv):
 def main():
     """Show user their default chart view."""
     sort_by = parse_options(sys.argv[1:])
-    stock_list = json.load(open('stock_list3.txt'))
+    stock_list = json.load(open('stock_list.txt'))
     data = quote_fetch(stock_list)
     full = make_table_default()
     portfolio = make_table_default()
@@ -143,7 +143,7 @@ def main():
         fill_table_entry(s, data, full, "full")
         fill_table_entry(s, data, portfolio, "portfolio")
 
-    #fetch_all_historical_data(json.load(open('stock_list3.txt')))
+    #fetch_all_historical_data(json.load(open('stock_list.txt')))
     print_charts(full, portfolio, sort_by)
 
 main()
